@@ -105,6 +105,14 @@ npm run dev                       # http://localhost:3000
 Create a free key at [pinecone.io](https://www.pinecone.io), set `PINECONE_API_KEY` in `backend/.env`, and run
 `python -m pipeline.index`. The index (384 dimensions, cosine) is created automatically, and cached embeddings are reused.
 
+## Deployment
+
+- **Backend → Hugging Face Spaces (Docker, free, 16 GB RAM).** `backend/Dockerfile` bakes the embedding and rerank models
+  into the image. Log in once with `hf auth login`, then run `python deploy/deploy_backend.py <user>/insightai-api`.
+  Add `LLM_API_KEY`, `GEMINI_API_KEY`, `PINECONE_API_KEY`, and `CORS_ORIGINS` as Space secrets.
+- **Frontend → GitHub Pages.** `.github/workflows/pages.yml` builds a static export on every push to `main`.
+  Set the repository variable `API_URL` to the Space URL (e.g. `https://user-insightai-api.hf.space`).
+
 ## API
 
 | Method | Path | Description |
