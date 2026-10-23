@@ -7,6 +7,22 @@ decision log. Every AI answer is **cited back to the customer's own words**.
 > InsightAI does not replace product managers. It flags low-evidence, conflicting, or high-impact answers for human review,
 > and every recommendation needs a PM decision.
 
+**Live demo:** [insightai-silk.vercel.app](https://insightai-silk.vercel.app/?demo=1) (opens with a 5,000-review demo dataset loaded)
+
+![Ask questions and get cited answers](docs/screenshots/01-ask.png)
+
+## Screenshots
+
+| Product insights | Product opportunities |
+|---|---|
+| ![Insights](docs/screenshots/02-insights.png) | ![Opportunities](docs/screenshots/03-opportunities.png) |
+| **Prioritization** | **Feedback library** |
+| ![Prioritization](docs/screenshots/04-prioritization.png) | ![Feedback](docs/screenshots/05-feedback.png) |
+| **Evidence library** | **Customer segments** |
+| ![Evidence](docs/screenshots/06-evidence.png) | ![Segments](docs/screenshots/07-segments.png) |
+| **Data sources (upload)** | |
+| ![Data sources](docs/screenshots/08-data-sources.png) | |
+
 ## Workflow
 
 ```mermaid
@@ -29,6 +45,7 @@ flowchart TD
 
 - **Upload any feedback file:** CSV, TSV, JSON or TXT, with automatic column detection (text, date, rating, customer, segment, revenue, source)
 - **One-click demo dataset:** 5,000 real app reviews, pre-labelled and pre-indexed, so trying the app costs no AI quota
+- **Shareable links:** `?demo=1` on any page loads the demo; `/?demo=1&q=...` asks a question on open
 - **Data cleaning report:** empty rows, too-short items, duplicates and HTML entities handled; up to 1,000 items per upload
 - **Dynamic themes:** the LLM proposes a theme taxonomy for each dataset, then labels every item against it
 - **LLM enrichment:** sentiment, theme, severity, product area, feedback type, churn risk and a summary, in resumable batches

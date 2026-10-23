@@ -67,6 +67,9 @@ export function overview(rows: Row[]) {
       m[r.sentiment || "neutral"]++;
       months.set(k, m);
     }
+    // Drop a trailing partial month (data ends early in it) so the chart doesn't show a fake dip
+    const last = rows.reduce((mx, r) => (r.date && r.date > mx ? r.date : mx), "");
+    if (last && Number(last.slice(8, 10)) < 20 && months.size > 2) months.delete(last.slice(0, 7));
     timeline = [...months.entries()].sort().slice(-12).map(([k, m]) => ({
       month: new Date(k + "-01T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
       ...m,

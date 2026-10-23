@@ -29,8 +29,15 @@ export default function Home() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns]);
 
-  if (!ready) return <Loading />;
-  if (!dataset) return <NeedsData />;
+  // ?q=... asks a question as soon as the dataset is ready (shareable "ask this" links)
+  const autoAsked = useRef(false);
+  useEffect(() => {
+    if (!ready || !dataset || autoAsked.current) return;
+    autoAsked.current = true;
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) ask(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, dataset]);
 
   async function ask(question: string) {
     const q = question.trim();
@@ -47,6 +54,9 @@ export default function Home() {
       setBusy(false);
     }
   }
+
+  if (!ready) return <Loading />;
+  if (!dataset) return <NeedsData />;
 
   const composer = (
     <form

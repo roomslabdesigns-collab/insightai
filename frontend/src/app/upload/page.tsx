@@ -8,10 +8,10 @@ import { Badge, Card, PageHeader } from "@/components/ui";
 import { clean, guessMapping, MAX_ROWS, parseFile, type CleanReport, type Mapping, type Records } from "@/lib/clean";
 import { discoverThemes, enrich, indexRows, type Progress } from "@/lib/pipeline";
 import { useStore } from "@/lib/store";
-import type { Row, Theme } from "@/lib/types";
+import type { Row } from "@/lib/types";
 import { num } from "@/lib/format";
+import { loadDemoDataset } from "@/lib/demo";
 
-const DEMO_NAMESPACE = "demo-app-reviews";
 const STEPS = ["Upload", "Clean", "Themes", "LLM enrichment", "Embeddings + index", "Ready"];
 const OPTIONAL: { key: keyof Mapping; label: string }[] = [
   { key: "date", label: "Date" },
@@ -95,18 +95,7 @@ export default function UploadPage() {
     setLoadingDemo(true);
     setError(null);
     try {
-      const res = await fetch("/demo/app-reviews.json");
-      if (!res.ok) throw new Error(`Demo data unavailable (${res.status})`);
-      const { themes, rows } = (await res.json()) as { themes: Theme[]; rows: Row[] };
-      setDataset({
-        name: "Demo: 5,000 Android app reviews",
-        createdAt: new Date().toISOString(),
-        namespace: DEMO_NAMESPACE,
-        mapping: { text: "review", date: "date", rating: "rating", customer: "customer", segment: "segment", revenue: "revenue", source: "app" },
-        themes,
-        rows,
-        report: { raw: rows.length, empty: 0, tooShort: 0, duplicates: 0, sampledOut: 0, kept: rows.length, fallbackLabels: 0 },
-      });
+      setDataset(await loadDemoDataset());
       setReplacing(false);
       setStep(5);
     } catch (e) {

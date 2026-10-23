@@ -3,6 +3,7 @@
 // needs no database. Vectors live in Pinecone under the dataset's namespace.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { CleanReport, Mapping } from "./clean";
+import { DEMO_NAMESPACE, loadDemoDataset } from "./demo";
 import type { Recommendation, Row, Theme } from "./types";
 
 export interface Dataset {
@@ -60,8 +61,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [reviews, setReviews] = useState<Record<string, Review>>({});
 
   useEffect(() => {
-    setDatasetState(read<Dataset>(DATASET_KEY));
+    const saved = read<Dataset>(DATASET_KEY);
     setReviews(read<Record<string, Review>>(REVIEWS_KEY) || {});
+    // ?demo=1 on any page opens it with the demo dataset loaded (shareable link)
+    const wantsDemo = new URLSearchParams(window.location.search).get("demo") === "1";
+    if (wantsDemo && saved?.namespace !== DEMO_NAMESPACE) {
+      loadDemoDataset()
+        .then((d) => {
+          setDatasetState(d);
+          write(DATASET_KEY, d);
+          setReviews({});
+          write(REVIEWS_KEY, null);
+        })
+        .catch(() => setDatasetState(saved))
+        .finally(() => setReady(true));
+      return;
+    }
+    setDatasetState(saved);
     setReady(true);
   }, []);
 
