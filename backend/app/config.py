@@ -24,10 +24,16 @@ DATASET_URL = os.getenv(
 SAMPLE_SIZE = int(os.getenv("SAMPLE_SIZE", "5000"))
 SAMPLE_SEED = int(os.getenv("SAMPLE_SEED", "42"))
 
-# LLM: any OpenAI-compatible endpoint (FreeLLMAPI by default; Groq/Gemini/OpenRouter also work)
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:3001/v1")
+# LLM: any OpenAI-compatible endpoint (Groq by default; Gemini/OpenRouter also work)
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "auto")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b,openai/gpt-oss-20b")
+LLM_MODELS = [m.strip() for m in LLM_MODEL.split(",") if m.strip()]
+
+# Optional backup provider, used when every primary model is rate-limited (Gemini free tier)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+GEMINI_MODELS = [m.strip() for m in os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",") if m.strip()]
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "60"))
 ENRICH_BATCH_SIZE = int(os.getenv("ENRICH_BATCH_SIZE", "20"))
 

@@ -44,7 +44,12 @@ def health() -> dict:
         "status": "ok",
         "reviews": {c["by"]: c["n"] for c in counts},
         "vector_store": {"backend": store.name, "vectors": store.count()},
-        "llm": {"base_url": config.LLM_BASE_URL, "model": config.LLM_MODEL, "reachable": llm.is_available()},
+        "llm": {
+            "base_url": config.LLM_BASE_URL,
+            "models": config.LLM_MODELS,
+            "backup_models": config.GEMINI_MODELS if config.GEMINI_API_KEY else [],
+            "reachable": llm.is_available(),
+        },
         "embedding_model": config.EMBED_MODEL,
         "reranker": config.RERANK_MODEL if config.USE_RERANKER else None,
         "themes": config.THEMES,

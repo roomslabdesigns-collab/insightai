@@ -5,6 +5,7 @@ import tempfile
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="insightai-test-")
 os.environ["PINECONE_API_KEY"] = ""
 os.environ["LLM_BASE_URL"] = "http://127.0.0.1:9/v1"  # nothing listens here -> LLM "offline"
+os.environ["GEMINI_API_KEY"] = ""
 
 import pytest  # noqa: E402
 

@@ -19,6 +19,23 @@ def test_parse_json_handles_fences_and_chatter():
     assert llm.parse_json('Sure! Here it is: {"items": []} hope that helps') == {"items": []}
 
 
+def test_model_rotation_and_provider_fallback(monkeypatch):
+    import time
+
+    primary = [llm.Endpoint("primary", m, None) for m in ("a", "b")]
+    backup = [llm.Endpoint("gemini", "g", None)]
+    monkeypatch.setattr(llm, "_groups", [primary, backup])
+    monkeypatch.setattr(llm, "_next", {})
+    # Primary models rotate and a rate-limited one is skipped; the backup is not used while primary works
+    monkeypatch.setattr(llm, "_cooldown", {"b": time.time() + 60})
+    assert {llm._pick().model for _ in range(4)} == {"a"}
+    # All primary models limited -> fall back to Gemini
+    monkeypatch.setattr(llm, "_cooldown", {"a": time.time() + 60, "b": time.time() + 60})
+    assert llm._pick().provider == "gemini"
+    monkeypatch.setattr(llm, "_cooldown", {m: time.time() + 60 for m in "abg"})
+    assert llm._pick() is None
+
+
 def test_validate_falls_back_on_bad_llm_fields():
     row = {"text": "Crashes on start", "star": 1}
     out = _validate({"sentiment": "NEGATIVE", "theme": "Not a theme", "severity": "high", "type": "bug report"}, row)

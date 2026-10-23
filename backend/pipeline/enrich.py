@@ -66,8 +66,12 @@ def _llm_batch(rows: list[dict]) -> tuple[dict[str, dict], dict]:
     return {r["id"]: _validate(by_id.get(r["id"], {}), r) for r in rows}, usage
 
 
-def run(mode: str = "auto", limit: int | None = None, redo_heuristic: bool = False) -> None:
-    where = "enriched_by IS NULL" + (" OR enriched_by = 'heuristic'" if redo_heuristic else "")
+def run(mode: str = "auto", limit: int | None = None, redo_heuristic: bool = False, redo_all: bool = False,
+        tag: str = "llm") -> None:
+    if redo_all:  # re-label every review not yet labelled under `tag` (resumable)
+        where = f"enriched_by IS NULL OR enriched_by != '{tag}'"
+    else:
+        where = "enriched_by IS NULL" + (" OR enriched_by = 'heuristic'" if redo_heuristic else "")
     rows = db.query(f"SELECT id, text, star FROM reviews WHERE {where} ORDER BY id")
     if limit:
         rows = rows[:limit]
@@ -93,7 +97,7 @@ def run(mode: str = "auto", limit: int | None = None, redo_heuristic: bool = Fal
             batch = futures[fut]
             try:
                 labels, usage = fut.result()
-                _save(labels, "llm")
+                _save(labels, tag)
                 tokens += (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
             except Exception as exc:
                 failed += 1
@@ -109,6 +113,8 @@ if __name__ == "__main__":
     ap.add_argument("--mode", choices=["auto", "llm", "heuristic"], default="auto")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--redo-heuristic", action="store_true", help="re-label rule-based rows with the LLM")
+    ap.add_argument("--redo-all", action="store_true", help="re-label every row (resumable via --tag)")
+    ap.add_argument("--tag", default="llm", help="value stored in enriched_by, e.g. llm-gemini")
     args = ap.parse_args()
     db.init_db()
-    run(args.mode, args.limit, args.redo_heuristic)
+    run(args.mode, args.limit, args.redo_heuristic, args.redo_all, args.tag)

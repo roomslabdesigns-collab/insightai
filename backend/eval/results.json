@@ -2,22 +2,22 @@
   {
     "mode": "dense",
     "hit@8": 1.0,
-    "precision@8": 0.669,
-    "mrr": 0.892,
-    "avg_latency_ms": 20
+    "precision@8": 0.875,
+    "mrr": 0.975,
+    "avg_latency_ms": 487
   },
   {
     "mode": "hybrid",
     "hit@8": 1.0,
-    "precision@8": 0.669,
-    "mrr": 0.877,
-    "avg_latency_ms": 27
+    "precision@8": 0.856,
+    "mrr": 0.975,
+    "avg_latency_ms": 479
   },
   {
     "mode": "hybrid_rerank",
-    "hit@8": 0.95,
-    "precision@8": 0.694,
-    "mrr": 0.9,
-    "avg_latency_ms": 461
+    "hit@8": 1.0,
+    "precision@8": 0.838,
+    "mrr": 1.0,
+    "avg_latency_ms": 859
   }
 ]

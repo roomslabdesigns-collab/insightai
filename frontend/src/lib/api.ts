@@ -30,7 +30,7 @@ export interface Health {
   status: string;
   reviews: Record<string, number>;
   vector_store: { backend: string; vectors: number };
-  llm: { base_url: string; model: string; reachable: boolean };
+  llm: { base_url: string; models: string[]; reachable: boolean };
   embedding_model: string;
   reranker: string | null;
   themes: string[];

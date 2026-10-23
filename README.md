@@ -12,6 +12,7 @@ cited back to real reviews**, plus dashboards that rank product opportunities by
 - **Citation verification:** any evidence id the LLM cites that was not actually retrieved is dropped
 - **Human-review triggers:** insufficient evidence, conflicting sentiment, low confidence, weak citations, high-ARR recommendations
 - **LLM enrichment pipeline:** each review is labelled with sentiment, theme, severity, type, churn risk, and a summary (batched, resumable)
+- **Multi-model, multi-provider failover:** calls rotate across free Groq models, skip any that hit a rate limit, and fall back to Gemini when all Groq models are exhausted
 - **Dashboard:** KPIs, top problem themes by ARR impact, volume and sentiment trends
 - **Ranked opportunities + decision matrix:** impact score from evidence volume, ARR at risk, severity, and year-over-year trend
 - **Customer segments:** sentiment, churn risk, and top problems per segment
@@ -44,7 +45,7 @@ flowchart LR
 |---|---|
 | Frontend | Next.js 15 (React 19, TypeScript), Tailwind CSS 4, Recharts, lucide-react |
 | Backend | Python 3.12, FastAPI, pandas, SQLite |
-| LLM | Any OpenAI-compatible API: [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) (default), Groq, or Gemini |
+| LLM | [Groq](https://console.groq.com) free tier (`gpt-oss-120b`, `gpt-oss-20b`), with Gemini Flash-Lite as automatic backup; any OpenAI-compatible API works |
 | Embeddings | `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, free) |
 | Reranker | `ms-marco-MiniLM-L-6-v2` cross-encoder via fastembed |
 | Vector DB | Pinecone serverless (free Starter plan), with a local numpy fallback |
@@ -66,12 +67,12 @@ The dataset has no customer or revenue fields, so each review is assigned to one
 
 | Mode | Hit@8 | Precision@8 | MRR | Avg latency |
 |---|---|---|---|---|
-| Dense only (vectors) | 1.00 | 0.669 | 0.892 | 20 ms |
-| Hybrid (vectors + BM25, RRF) | 1.00 | 0.669 | 0.877 | 27 ms |
-| Hybrid + cross-encoder rerank | 0.95 | **0.694** | **0.900** | 461 ms |
+| Dense only (Pinecone) | 1.00 | **0.875** | 0.975 | 487 ms |
+| Hybrid (Pinecone + BM25, RRF) | 1.00 | 0.856 | 0.975 | 479 ms |
+| Hybrid + cross-encoder rerank | 1.00 | 0.838 | **1.000** | 859 ms |
 
-Reranking gives the best precision and MRR at the cost of latency. These numbers were measured with rule-based labels
-(offline mode). Re-run the script after LLM enrichment for final figures (`eval/results.json`).
+Labels come from Gemini Flash-Lite. Reranking puts a relevant review first for every question (MRR 1.0), while dense
+search keeps the most on-theme reviews in the top 8. Latency includes the Pinecone network round trip.
 
 ## Run Locally
 
@@ -83,7 +84,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env              # add your FreeLLMAPI / Pinecone keys (optional)
+cp .env.example .env              # add your Groq / Pinecone keys (optional)
 python -m pipeline.run            # download, label, and index 5k reviews
 uvicorn app.main:app --port 8000
 
@@ -93,12 +94,11 @@ npm install
 npm run dev                       # http://localhost:3000
 ```
 
-### Using FreeLLMAPI for the LLM
+### Using Groq for the LLM
 
-1. Install and run [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) (Docker or the desktop app). It serves `http://localhost:3001/v1`.
-2. Add free provider keys (e.g. Google AI Studio, Groq) in its dashboard.
-3. Put its unified key in `backend/.env` as `LLM_API_KEY`.
-4. Re-label with the LLM: `python -m pipeline.enrich --mode llm --redo-heuristic`, then `python -m pipeline.index`.
+1. Create a free API key at [console.groq.com/keys](https://console.groq.com/keys).
+2. Put it in `backend/.env` as `LLM_API_KEY`. `LLM_MODEL` takes a comma-separated list of models to rotate between.
+3. Label with the LLM: `python -m pipeline.enrich --mode llm --redo-heuristic`, then `python -m pipeline.index`.
 
 ### Using Pinecone
 
