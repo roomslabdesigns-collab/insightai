@@ -28,6 +28,7 @@ flowchart TD
 ## Features
 
 - **Upload any feedback file:** CSV, TSV, JSON or TXT, with automatic column detection (text, date, rating, customer, segment, revenue, source)
+- **One-click demo dataset:** 5,000 real app reviews, pre-labelled and pre-indexed, so trying the app costs no AI quota
 - **Data cleaning report:** empty rows, too-short items, duplicates and HTML entities handled; up to 1,000 items per upload
 - **Dynamic themes:** the LLM proposes a theme taxonomy for each dataset, then labels every item against it
 - **LLM enrichment:** sentiment, theme, severity, product area, feedback type, churn risk and a summary, in resumable batches
@@ -88,6 +89,7 @@ cp .env.example .env          # LLM_API_KEY (Groq), GEMINI_API_KEY, PINECONE_API
 python -m pipeline.run        # ingest -> enrich -> index the test set
 python -m eval.eval_retrieval # retrieval metrics
 python -m pytest -q
+python -m pipeline.export_demo  # publish the test set as the web app's demo (JSON + Pinecone namespace)
 ```
 
 ## Project Structure

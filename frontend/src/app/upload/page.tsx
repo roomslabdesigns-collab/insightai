@@ -1,16 +1,17 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowRight, Check, FileUp, Loader2, RotateCcw, Sparkles, Upload } from "lucide-react";
+import { ArrowRight, Check, Database, FileUp, Loader2, RotateCcw, Sparkles, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { clean, guessMapping, MAX_ROWS, parseFile, type CleanReport, type Mapping, type Records } from "@/lib/clean";
 import { discoverThemes, enrich, indexRows, type Progress } from "@/lib/pipeline";
 import { useStore } from "@/lib/store";
-import type { Row } from "@/lib/types";
+import type { Row, Theme } from "@/lib/types";
 import { num } from "@/lib/format";
 
+const DEMO_NAMESPACE = "demo-app-reviews";
 const STEPS = ["Upload", "Clean", "Themes", "LLM enrichment", "Embeddings + index", "Ready"];
 const OPTIONAL: { key: keyof Mapping; label: string }[] = [
   { key: "date", label: "Date" },
@@ -33,6 +34,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [replacing, setReplacing] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
 
   async function onFile(file: File) {
     setError(null);
@@ -85,6 +87,32 @@ export default function UploadPage() {
       setError((e as Error).message);
     } finally {
       setRunning(false);
+    }
+  }
+
+  // The demo is pre-processed (labelled + indexed once in Pinecone), so loading it costs no AI quota
+  async function loadDemo() {
+    setLoadingDemo(true);
+    setError(null);
+    try {
+      const res = await fetch("/demo/app-reviews.json");
+      if (!res.ok) throw new Error(`Demo data unavailable (${res.status})`);
+      const { themes, rows } = (await res.json()) as { themes: Theme[]; rows: Row[] };
+      setDataset({
+        name: "Demo: 5,000 Android app reviews",
+        createdAt: new Date().toISOString(),
+        namespace: DEMO_NAMESPACE,
+        mapping: { text: "review", date: "date", rating: "rating", customer: "customer", segment: "segment", revenue: "revenue", source: "app" },
+        themes,
+        rows,
+        report: { raw: rows.length, empty: 0, tooShort: 0, duplicates: 0, sampledOut: 0, kept: rows.length, fallbackLabels: 0 },
+      });
+      setReplacing(false);
+      setStep(5);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingDemo(false);
     }
   }
 
@@ -162,6 +190,19 @@ export default function UploadPage() {
             <div className="text-xs text-muted">CSV, TSV, JSON or TXT (one item per line) · up to {num(MAX_ROWS)} items are analysed</div>
           </div>
           <input ref={inputRef} type="file" accept=".csv,.tsv,.json,.txt" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+        </Card>
+      )}
+
+      {!showCurrent && step === 0 && (
+        <Card className="mt-3 flex flex-wrap items-center gap-3 p-4">
+          <Database className="size-4 text-accent" />
+          <div className="flex-1 text-sm">
+            <div className="font-medium">No data handy? Try the demo dataset</div>
+            <div className="text-xs text-muted">5,000 real Android app reviews, already cleaned, AI-labelled and indexed. Customer, segment and revenue values are synthetic.</div>
+          </div>
+          <button onClick={loadDemo} disabled={loadingDemo} className="flex items-center gap-2 rounded-lg border border-accent/40 px-3 py-1.5 text-sm text-accent-2 hover:bg-accent/10 disabled:opacity-50">
+            {loadingDemo && <Loader2 className="size-4 animate-spin" />} Load demo dataset
+          </button>
         </Card>
       )}
 
