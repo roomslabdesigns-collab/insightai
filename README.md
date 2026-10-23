@@ -1,5 +1,16 @@
 # InsightAI: RAG-Powered Product Feedback Intelligence
 
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?logo=tailwindcss&logoColor=white)
+![Pinecone](https://img.shields.io/badge/Pinecone-Vector_DB-000000)
+![Groq](https://img.shields.io/badge/Groq-LLM-F55036)
+![Gemini](https://img.shields.io/badge/Gemini-Backup_LLM-8E75B2?logo=googlegemini&logoColor=white)
+![Python](https://img.shields.io/badge/Python_3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?logo=vercel&logoColor=white)
+
 Upload customer feedback (reviews, support tickets, surveys, interview notes) and InsightAI turns it into
 **evidence-backed product insights, prioritised opportunities and recommendations**, with a PM review step and a
 decision log. Every AI answer is **cited back to the customer's own words**.
@@ -57,16 +68,23 @@ flowchart TD
 - **Multi-provider LLM failover:** rotates across free Groq models and falls back to Gemini when Groq hits its limits
 - **No API key for visitors:** keys live in server-side functions; per-visitor daily limits protect the free quotas
 
-## Architecture
+## Tech Stack
 
-| Layer | Tech |
-|---|---|
-| App | Next.js 15 (React 19, TypeScript), Tailwind CSS 4, Recharts, deployed on Vercel |
-| Server functions | Next.js route handlers: `/api/themes`, `/api/enrich`, `/api/index`, `/api/ask`, `/api/recommend` |
-| LLM | Groq (`gpt-oss-120b`, `gpt-oss-20b`) with Gemini Flash-Lite as automatic backup |
-| Embeddings + vector DB | Pinecone serverless + Pinecone Inference (`llama-text-embed-v2`, 1024 dims) |
-| Client | File parsing (PapaParse), cleaning, pipeline orchestration, analytics; dataset and decisions in localStorage |
-| Research pipeline | Python 3.12, FastAPI, fastembed, BM25, cross-encoder rerank, pytest (in `backend/`) |
+| Layer | Technology | Used for |
+|---|---|---|
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript | 10 pages: chat, upload, insights, opportunities, prioritisation, recommendations, decisions, and more |
+| **Styling + charts** | Tailwind CSS 4, Recharts, lucide-react | Dark dashboard UI, volume and sentiment charts |
+| **Backend (serverless)** | Next.js route handlers on Vercel | `/api/themes`, `/api/enrich`, `/api/index`, `/api/ask`, `/api/recommend`; API keys stay server-side |
+| **LLM** | Groq (`gpt-oss-120b`, `gpt-oss-20b`) | Theme discovery, enrichment, RAG answers, recommendations |
+| **Backup LLM** | Google Gemini (`gemini-3.5-flash-lite`) | Automatic failover when Groq hits rate limits |
+| **Embeddings** | Pinecone Inference (`llama-text-embed-v2`, 1024 dims) | Hosted embeddings for feedback and questions |
+| **Vector database** | Pinecone serverless | Semantic search, one namespace per upload (auto-deleted after 24h) |
+| **Data handling** | PapaParse, browser localStorage | CSV/JSON/TXT parsing, cleaning, dataset + PM decisions storage |
+| **Hosting** | Vercel (free Hobby plan) | Deploys on every push to `main` |
+| **Research pipeline** | Python 3.12, FastAPI, pandas, SQLite | Offline pipeline used to design and test the approach |
+| **Retrieval research** | fastembed (`bge-small-en-v1.5`), BM25 (`rank-bm25`), cross-encoder rerank | Hybrid search experiments and evaluation |
+| **Testing + eval** | pytest, custom retrieval eval (Hit@k, Precision@k, MRR) | 8 unit/API tests, 20-question retrieval benchmark |
+| **Test data** | Hugging Face `sealuzh/app_reviews` | 5,000 real Android app reviews (demo dataset) |
 
 ## Run Locally
 
