@@ -1,0 +1,119 @@
+"use client";
+
+import clsx from "clsx";
+import { Library, LayoutGrid, Lightbulb, ListOrdered, MessageSquare, Plus, Search, Users } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useApi, type Health } from "@/lib/api";
+import { num } from "@/lib/format";
+
+const MAIN = [
+  { href: "/", label: "New Query", icon: Plus },
+  { href: "/dashboard/", label: "Dashboard", icon: LayoutGrid },
+  { href: "/feedback/", label: "Feedback", icon: MessageSquare, count: true },
+  { href: "/opportunities/", label: "Opportunities", icon: Lightbulb, dot: true },
+  { href: "/prioritization/", label: "Prioritization", icon: ListOrdered },
+];
+const DATA = [
+  { href: "/evidence/", label: "Evidence Library", icon: Library },
+  { href: "/segments/", label: "Customer Segments", icon: Users },
+];
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-5 items-end gap-[3px]">
+        {[10, 16, 20].map((h, i) => (
+          <span key={i} className="w-[4px] rounded-sm bg-accent" style={{ height: h, opacity: 0.55 + i * 0.2 }} />
+        ))}
+      </div>
+      <div>
+        <div className="text-[15px] font-semibold leading-none">InsightAI</div>
+        <div className="mt-1 text-[10px] text-muted">Product Feedback Intelligence</div>
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const { data: health, error } = useApi<Health>("/api/health");
+  const total = health ? Object.values(health.reviews).reduce((a, b) => a + b, 0) : 0;
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
+
+  const item = (n: (typeof MAIN)[number]) => {
+    const Icon = n.icon;
+    return (
+      <Link
+        key={n.href}
+        href={n.href}
+        className={clsx(
+          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors",
+          isActive(n.href) ? "bg-accent/15 text-ink ring-1 ring-accent/30" : "text-muted hover:bg-panel-2 hover:text-ink",
+        )}
+      >
+        <Icon className="size-4" />
+        <span className="flex-1">{n.label}</span>
+        {n.count && total > 0 && <span className="rounded bg-panel-2 px-1.5 font-mono text-[10px] text-muted">{num(total)}</span>}
+        {n.dot && <span className="size-1.5 rounded-full bg-warn" />}
+      </Link>
+    );
+  };
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-panel/60 px-3 py-5 md:flex">
+        <div className="px-2">
+          <Logo />
+        </div>
+        <form
+          className="mt-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            router.push(`/feedback/?q=${encodeURIComponent(q)}`);
+          }}
+        >
+          <label className="flex items-center gap-2 rounded-lg border border-line bg-panel px-2.5 py-2 text-sm">
+            <Search className="size-3.5 text-faint" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search feedback..." className="w-full bg-transparent outline-none placeholder:text-faint" />
+          </label>
+        </form>
+        <nav className="mt-4 space-y-0.5">{MAIN.map(item)}</nav>
+        <div className="label mt-6 px-2.5">Data &amp; Intelligence</div>
+        <nav className="mt-2 space-y-0.5">{DATA.map((d) => item(d))}</nav>
+        <div className="mt-auto rounded-lg border border-line bg-panel p-3 text-[11px]">
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className={clsx("size-1.5 rounded-full", error ? "bg-bad" : health ? "bg-good" : "bg-faint")} />
+            {error ? "API offline" : health ? "Pipeline healthy" : "Connecting..."}
+          </div>
+          {health && (
+            <div className="mt-1.5 space-y-0.5 font-mono text-[10px] text-faint">
+              <div>{num(total)} reviews · {health.vector_store.backend} vectors</div>
+              <div>LLM {health.llm.reachable ? "online" : "offline (extractive mode)"}</div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="sticky top-0 z-20 border-b border-line bg-bg/90 px-4 py-3 backdrop-blur md:hidden">
+        <Logo />
+        <nav className="-mx-4 mt-3 flex gap-1 overflow-x-auto px-4 pb-1">
+          {[...MAIN, ...DATA].map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              className={clsx("shrink-0 rounded-md px-2.5 py-1.5 text-xs", isActive(n.href) ? "bg-accent/15 text-ink" : "text-muted")}
+            >
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </>
+  );
+}

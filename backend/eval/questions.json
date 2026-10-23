@@ -1,0 +1,22 @@
+[
+  {"q": "The app keeps crashing when I open it", "theme": "Crashes & Stability"},
+  {"q": "force close errors after launching", "theme": "Crashes & Stability"},
+  {"q": "app freezes and stops responding", "theme": "Crashes & Stability"},
+  {"q": "drains my battery too fast", "theme": "Performance & Battery"},
+  {"q": "very slow and laggy performance", "theme": "Performance & Battery"},
+  {"q": "uses too much memory and CPU", "theme": "Performance & Battery"},
+  {"q": "please add an option to export data", "theme": "Feature Requests"},
+  {"q": "would be nice to have more features", "theme": "Feature Requests"},
+  {"q": "missing support for a feature I need", "theme": "Feature Requests"},
+  {"q": "cannot sync with the server", "theme": "Sync & Connectivity"},
+  {"q": "login and account connection problems", "theme": "Sync & Connectivity"},
+  {"q": "does not work on my tablet", "theme": "Compatibility & Devices"},
+  {"q": "not compatible with my Android version", "theme": "Compatibility & Devices"},
+  {"q": "the latest update broke everything", "theme": "Updates & Regressions"},
+  {"q": "it used to work before the new version", "theme": "Updates & Regressions"},
+  {"q": "asks for too many permissions", "theme": "Privacy & Permissions"},
+  {"q": "concerned about tracking and privacy", "theme": "Privacy & Permissions"},
+  {"q": "the interface is confusing and hard to use", "theme": "UI & Usability"},
+  {"q": "buttons and menu layout are bad", "theme": "UI & Usability"},
+  {"q": "great app, works perfectly, love it", "theme": "General Feedback"}
+]
