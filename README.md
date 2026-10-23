@@ -1,147 +1,103 @@
 # InsightAI: RAG-Powered Product Feedback Intelligence
 
-InsightAI turns unstructured customer feedback into **evidence-backed product insights**. Product managers ask
-questions in plain English ("Why are users uninstalling?") and get a structured answer where **every claim is
-cited back to real reviews**, plus dashboards that rank product opportunities by business impact.
+Upload customer feedback (reviews, support tickets, surveys, interview notes) and InsightAI turns it into
+**evidence-backed product insights, prioritised opportunities and recommendations**, with a PM review step and a
+decision log. Every AI answer is **cited back to the customer's own words**.
 
-> InsightAI does not replace product managers. It flags low-evidence, conflicting, or high-impact answers for human review.
+> InsightAI does not replace product managers. It flags low-evidence, conflicting, or high-impact answers for human review,
+> and every recommendation needs a PM decision.
+
+## Workflow
+
+```mermaid
+flowchart TD
+  A[Customer feedback<br/>CSV / JSON / TXT upload] --> B[Data cleaning<br/>dedupe, empty, short, HTML]
+  B --> C[LLM theme discovery<br/>taxonomy per dataset]
+  C --> D[LLM enrichment<br/>theme, sentiment, severity,<br/>product area, churn risk]
+  D --> E[Embeddings<br/>Pinecone hosted model]
+  E --> F[(Vector search<br/>Pinecone namespace per upload)]
+  F --> G[RAG intelligence<br/>grounded, cited answers]
+  D --> H[Product insights]
+  H --> I[Product opportunities]
+  I --> J[Prioritisation<br/>impact + revenue + severity + evidence]
+  J --> K[Product recommendation<br/>LLM, evidence-cited]
+  K --> L[PM review<br/>approve / needs evidence / reject]
+  L --> M[Product decision log<br/>CSV + Markdown export]
+```
 
 ## Features
 
-- **Ask questions over feedback (RAG):** hybrid retrieval (vector + BM25), cross-encoder reranking, and grounded JSON answers with citations
-- **Citation verification:** any evidence id the LLM cites that was not actually retrieved is dropped
-- **Human-review triggers:** insufficient evidence, conflicting sentiment, low confidence, weak citations, high-ARR recommendations
-- **LLM enrichment pipeline:** each review is labelled with sentiment, theme, severity, type, churn risk, and a summary (batched, resumable)
-- **Multi-model, multi-provider failover:** calls rotate across free Groq models, skip any that hit a rate limit, and fall back to Gemini when all Groq models are exhausted
-- **Dashboard:** KPIs, top problem themes by ARR impact, volume and sentiment trends
-- **Ranked opportunities + decision matrix:** impact score from evidence volume, ARR at risk, severity, and year-over-year trend
-- **Customer segments:** sentiment, churn risk, and top problems per segment
-- **Feedback + evidence libraries:** search and filter all 5,000 reviews, with citable high-severity quotes
-- **Retrieval evaluation:** Hit@k, Precision@k, and MRR for dense vs hybrid vs hybrid + rerank
-- **Works offline:** falls back to rule-based labels, a local vector index, and extractive answers if the LLM or Pinecone is unavailable
+- **Upload any feedback file:** CSV, TSV, JSON or TXT, with automatic column detection (text, date, rating, customer, segment, revenue, source)
+- **Data cleaning report:** empty rows, too-short items, duplicates and HTML entities handled; up to 1,000 items per upload
+- **Dynamic themes:** the LLM proposes a theme taxonomy for each dataset, then labels every item against it
+- **LLM enrichment:** sentiment, theme, severity, product area, feedback type, churn risk and a summary, in resumable batches
+- **Vector search:** Pinecone hosted embeddings (`llama-text-embed-v2`) with a private namespace per upload, auto-deleted after 24 hours
+- **RAG answers:** structured JSON answers; citations that were not actually retrieved are dropped
+- **Human-review triggers:** insufficient evidence, conflicting sentiment, low confidence, weak citations, high-revenue impact
+- **Prioritisation:** impact score from evidence volume, revenue at risk, severity, churn share and trend (re-weighted when a column is missing)
+- **Recommendations + PM review + decisions:** evidence-cited recommendations, approve / reject / needs-evidence with notes, exportable decision log
+- **Multi-provider LLM failover:** rotates across free Groq models and falls back to Gemini when Groq hits its limits
+- **No API key for visitors:** keys live in server-side functions; per-visitor daily limits protect the free quotas
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  A[HF dataset<br/>app_reviews] --> B[Ingest + clean<br/>5k sample]
-  B --> C[LLM enrichment<br/>sentiment, theme, severity]
-  C --> D[(SQLite<br/>reviews + labels)]
-  C --> E[Local embeddings<br/>bge-small]
-  E --> F[(Pinecone)]
-  Q[PM question] --> G[Hybrid retrieval<br/>Pinecone + BM25 + RRF]
-  F --> G
-  D --> G
-  G --> H[Cross-encoder rerank]
-  H --> I[LLM answer<br/>grounded JSON]
-  I --> J[Citation check +<br/>human-review flags]
-  J --> K[Next.js UI]
-  D --> L[Analytics API] --> K
-```
-
-## Tech Stack
-
 | Layer | Tech |
 |---|---|
-| Frontend | Next.js 15 (React 19, TypeScript), Tailwind CSS 4, Recharts, lucide-react |
-| Backend | Python 3.12, FastAPI, pandas, SQLite |
-| LLM | [Groq](https://console.groq.com) free tier (`gpt-oss-120b`, `gpt-oss-20b`), with Gemini Flash-Lite as automatic backup; any OpenAI-compatible API works |
-| Embeddings | `BAAI/bge-small-en-v1.5` via fastembed (ONNX, CPU, free) |
-| Reranker | `ms-marco-MiniLM-L-6-v2` cross-encoder via fastembed |
-| Vector DB | Pinecone serverless (free Starter plan), with a local numpy fallback |
-| Keyword search | BM25 (`rank-bm25`), fused with Reciprocal Rank Fusion |
-| Testing | pytest, plus a retrieval evaluation script |
-
-## Data
-
-[`sealuzh/app_reviews`](https://huggingface.co/datasets/sealuzh/app_reviews): 288k real user reviews of open-source
-Android apps (F-Droid). After cleaning (length 20 to 1,500 characters, de-duplicated), a fixed-seed sample of **5,000 reviews**
-from 301 apps (2014 to 2017) is used.
-
-The dataset has no customer or revenue fields, so each review is assigned to one of 600 **synthetic customer accounts**
-(segment + ARR) with a fixed seed, so the business-impact features can be demonstrated. The review text, ratings, and dates are real.
-
-## Retrieval Evaluation
-
-`python -m eval.eval_retrieval` runs 20 labelled questions (k=8). A result counts as relevant when its theme label matches the expected theme.
-
-| Mode | Hit@8 | Precision@8 | MRR | Avg latency |
-|---|---|---|---|---|
-| Dense only (Pinecone) | 1.00 | **0.875** | 0.975 | 487 ms |
-| Hybrid (Pinecone + BM25, RRF) | 1.00 | 0.856 | 0.975 | 479 ms |
-| Hybrid + cross-encoder rerank | 1.00 | 0.838 | **1.000** | 859 ms |
-
-Labels come from Gemini Flash-Lite. Reranking puts a relevant review first for every question (MRR 1.0), while dense
-search keeps the most on-theme reviews in the top 8. Latency includes the Pinecone network round trip.
+| App | Next.js 15 (React 19, TypeScript), Tailwind CSS 4, Recharts, deployed on Vercel |
+| Server functions | Next.js route handlers: `/api/themes`, `/api/enrich`, `/api/index`, `/api/ask`, `/api/recommend` |
+| LLM | Groq (`gpt-oss-120b`, `gpt-oss-20b`) with Gemini Flash-Lite as automatic backup |
+| Embeddings + vector DB | Pinecone serverless + Pinecone Inference (`llama-text-embed-v2`, 1024 dims) |
+| Client | File parsing (PapaParse), cleaning, pipeline orchestration, analytics; dataset and decisions in localStorage |
+| Research pipeline | Python 3.12, FastAPI, fastembed, BM25, cross-encoder rerank, pytest (in `backend/`) |
 
 ## Run Locally
 
-**Requirements:** Python 3.12, Node 20+
-
 ```bash
-# 1. Backend
-cd backend
-python -m venv .venv
-.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env              # add your Groq / Pinecone keys (optional)
-python -m pipeline.run            # download, label, and index 5k reviews
-uvicorn app.main:app --port 8000
-
-# 2. Frontend (new terminal)
 cd frontend
 npm install
-npm run dev                       # http://localhost:3000
+cp .env.example .env.local    # add GROQ_API_KEY, GEMINI_API_KEY, PINECONE_API_KEY
+npm run dev                   # http://localhost:3000, then upload a file in Data Sources
 ```
 
-### Using Groq for the LLM
+All three keys are free: [Groq](https://console.groq.com/keys), [Gemini](https://aistudio.google.com/apikey),
+[Pinecone](https://app.pinecone.io). The Pinecone index is created automatically on the first upload.
 
-1. Create a free API key at [console.groq.com/keys](https://console.groq.com/keys).
-2. Put it in `backend/.env` as `LLM_API_KEY`. `LLM_MODEL` takes a comma-separated list of models to rotate between.
-3. Label with the LLM: `python -m pipeline.enrich --mode llm --redo-heuristic`, then `python -m pipeline.index`.
+## Deploy to Vercel (free)
 
-### Using Pinecone
+1. Import this repository at [vercel.com/new](https://vercel.com/new) and set **Root Directory** to `frontend`.
+2. Add the environment variables from `frontend/.env.example`.
+3. Deploy. Every push to `main` redeploys.
 
-Create a free key at [pinecone.io](https://www.pinecone.io), set `PINECONE_API_KEY` in `backend/.env`, and run
-`python -m pipeline.index`. The index (384 dimensions, cosine) is created automatically, and cached embeddings are reused.
+## Research Pipeline and Evaluation (`backend/`)
 
-## Deployment
+The Python pipeline was used to design and evaluate the retrieval approach on a test set of 5,000 real Android app
+reviews ([`sealuzh/app_reviews`](https://huggingface.co/datasets/sealuzh/app_reviews), with synthetic account data).
+All 5,000 were labelled by an LLM, then `python -m eval.eval_retrieval` scored 20 labelled questions (k=8):
 
-- **Backend → Hugging Face Spaces (Docker, free, 16 GB RAM).** `backend/Dockerfile` bakes the embedding and rerank models
-  into the image. Log in once with `hf auth login`, then run `python deploy/deploy_backend.py <user>/insightai-api`.
-  Add `LLM_API_KEY`, `GEMINI_API_KEY`, `PINECONE_API_KEY`, and `CORS_ORIGINS` as Space secrets.
-- **Frontend → GitHub Pages.** `.github/workflows/pages.yml` builds a static export on every push to `main`.
-  Set the repository variable `API_URL` to the Space URL (e.g. `https://user-insightai-api.hf.space`).
-
-## API
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/query` | `{question, filters?}` → grounded answer, evidence, review flags, latency |
-| GET | `/api/overview` | KPIs, themes by impact, monthly volume and sentiment |
-| GET | `/api/opportunities` | Ranked opportunities with score, priority, confidence, evidence |
-| GET | `/api/segments` | Per-segment sentiment, churn risk, top problems |
-| GET | `/api/feedback` | Search and filter reviews (`q`, `sentiment`, `severity`, `theme`, `segment`, `page`) |
-| GET | `/api/health` | Pipeline, vector store, and LLM status |
-
-Interactive docs: `http://localhost:8000/docs`
-
-## Tests
+| Mode | Hit@8 | Precision@8 | MRR |
+|---|---|---|---|
+| Dense only (Pinecone) | 1.00 | **0.875** | 0.975 |
+| Hybrid (Pinecone + BM25, RRF) | 1.00 | 0.856 | 0.975 |
+| Hybrid + cross-encoder rerank | 1.00 | 0.838 | **1.000** |
 
 ```bash
 cd backend
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env          # LLM_API_KEY (Groq), GEMINI_API_KEY, PINECONE_API_KEY
+python -m pipeline.run        # ingest -> enrich -> index the test set
+python -m eval.eval_retrieval # retrieval metrics
 python -m pytest -q
 ```
 
 ## Project Structure
 
 ```
-backend/
-  app/          FastAPI app, retrieval, RAG, analytics, LLM + vector store clients
-  pipeline/     ingest -> enrich -> index
-  eval/         retrieval evaluation set + script
-  tests/        pytest suite
 frontend/
-  src/app/      7 screens: chat, dashboard, feedback, opportunities, prioritization, evidence, segments
-  src/components, src/lib
+  src/app/            pages: chat, upload, insights, feedback, opportunities, prioritization,
+                      recommendations, decisions, evidence, segments
+  src/app/api/        serverless routes: themes, enrich, index, ask, recommend
+  src/lib/            cleaning, pipeline, analytics, store, server clients (LLM, Pinecone)
+backend/
+  app/ pipeline/ eval/ tests/    Python research pipeline and evaluation
 ```

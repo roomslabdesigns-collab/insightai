@@ -1,5 +1,6 @@
 import clsx from "clsx";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, FileUp, Loader2 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
@@ -66,9 +67,21 @@ export function ErrorState({ message }: { message: string }) {
     <Card className="flex items-start gap-3 border-bad/30 p-4 text-sm">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-bad" />
       <div>
-        <div className="font-medium">Couldn&apos;t reach the InsightAI API</div>
-        <div className="mt-1 text-muted">{message}. Is the backend running on the configured API URL?</div>
+        <div className="font-medium">Something went wrong</div>
+        <div className="mt-1 text-muted">{message}</div>
       </div>
+    </Card>
+  );
+}
+
+/** Shown on analysis pages until a dataset has been uploaded and processed. */
+export function NeedsData() {
+  return (
+    <Card className="mx-auto mt-10 max-w-lg p-8 text-center">
+      <FileUp className="mx-auto size-8 text-accent" />
+      <div className="mt-3 text-lg font-semibold">Upload customer feedback to begin</div>
+      <p className="mt-1 text-sm text-muted">Reviews, support tickets, surveys or interview notes as CSV, JSON or TXT.</p>
+      <Link href="/upload/" className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm text-white">Go to Data Sources</Link>
     </Card>
   );
 }

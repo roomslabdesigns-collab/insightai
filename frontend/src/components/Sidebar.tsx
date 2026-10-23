@@ -1,21 +1,26 @@
 "use client";
 
 import clsx from "clsx";
-import { Library, LayoutGrid, Lightbulb, ListOrdered, MessageSquare, Plus, Search, Users } from "lucide-react";
+import { ClipboardCheck, Database, Gavel, Library, LayoutGrid, Lightbulb, ListOrdered, MessageSquare, Plus, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { useApi, type Health } from "@/lib/api";
 import { num } from "@/lib/format";
+import { useStore } from "@/lib/store";
 
-const MAIN = [
+type Item = { href: string; label: string; icon: typeof Plus; count?: boolean };
+
+const MAIN: Item[] = [
   { href: "/", label: "New Query", icon: Plus },
-  { href: "/dashboard/", label: "Dashboard", icon: LayoutGrid },
+  { href: "/dashboard/", label: "Insights", icon: LayoutGrid },
   { href: "/feedback/", label: "Feedback", icon: MessageSquare, count: true },
-  { href: "/opportunities/", label: "Opportunities", icon: Lightbulb, dot: true },
+  { href: "/opportunities/", label: "Opportunities", icon: Lightbulb },
   { href: "/prioritization/", label: "Prioritization", icon: ListOrdered },
+  { href: "/recommendations/", label: "Recommendations", icon: ClipboardCheck },
+  { href: "/decisions/", label: "Decisions", icon: Gavel },
 ];
-const DATA = [
+const DATA: Item[] = [
+  { href: "/upload/", label: "Data Sources", icon: Database },
   { href: "/evidence/", label: "Evidence Library", icon: Library },
   { href: "/segments/", label: "Customer Segments", icon: Users },
 ];
@@ -40,11 +45,10 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
-  const { data: health, error } = useApi<Health>("/api/health");
-  const total = health ? Object.values(health.reviews).reduce((a, b) => a + b, 0) : 0;
+  const { dataset, ready } = useStore();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, "")));
 
-  const item = (n: (typeof MAIN)[number]) => {
+  const link = (n: Item) => {
     const Icon = n.icon;
     return (
       <Link
@@ -57,15 +61,13 @@ export default function Sidebar() {
       >
         <Icon className="size-4" />
         <span className="flex-1">{n.label}</span>
-        {n.count && total > 0 && <span className="rounded bg-panel-2 px-1.5 font-mono text-[10px] text-muted">{num(total)}</span>}
-        {n.dot && <span className="size-1.5 rounded-full bg-warn" />}
+        {n.count && dataset && <span className="rounded bg-panel-2 px-1.5 font-mono text-[10px] text-muted">{num(dataset.rows.length)}</span>}
       </Link>
     );
   };
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-panel/60 px-3 py-5 md:flex">
         <div className="px-2">
           <Logo />
@@ -82,33 +84,25 @@ export default function Sidebar() {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search feedback..." className="w-full bg-transparent outline-none placeholder:text-faint" />
           </label>
         </form>
-        <nav className="mt-4 space-y-0.5">{MAIN.map(item)}</nav>
+        <nav className="mt-4 space-y-0.5">{MAIN.map(link)}</nav>
         <div className="label mt-6 px-2.5">Data &amp; Intelligence</div>
-        <nav className="mt-2 space-y-0.5">{DATA.map((d) => item(d))}</nav>
+        <nav className="mt-2 space-y-0.5">{DATA.map(link)}</nav>
         <div className="mt-auto rounded-lg border border-line bg-panel p-3 text-[11px]">
           <div className="flex items-center gap-1.5 font-medium">
-            <span className={clsx("size-1.5 rounded-full", error ? "bg-bad" : health ? "bg-good" : "bg-faint")} />
-            {error ? "API offline" : health ? "Pipeline healthy" : "Connecting..."}
+            <span className={clsx("size-1.5 rounded-full", dataset ? "bg-good" : "bg-faint")} />
+            {!ready ? "Loading..." : dataset ? "Dataset ready" : "No data yet"}
           </div>
-          {health && (
-            <div className="mt-1.5 space-y-0.5 font-mono text-[10px] text-faint">
-              <div>{num(total)} reviews · {health.vector_store.backend} vectors</div>
-              <div>LLM {health.llm.reachable ? "online" : "offline (extractive mode)"}</div>
-            </div>
-          )}
+          <div className="mt-1.5 truncate font-mono text-[10px] text-faint">
+            {dataset ? `${dataset.name} · ${num(dataset.rows.length)} items` : "Upload feedback in Data Sources"}
+          </div>
         </div>
       </aside>
 
-      {/* Mobile top bar */}
       <div className="sticky top-0 z-20 border-b border-line bg-bg/90 px-4 py-3 backdrop-blur md:hidden">
         <Logo />
         <nav className="-mx-4 mt-3 flex gap-1 overflow-x-auto px-4 pb-1">
           {[...MAIN, ...DATA].map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={clsx("shrink-0 rounded-md px-2.5 py-1.5 text-xs", isActive(n.href) ? "bg-accent/15 text-ink" : "text-muted")}
-            >
+            <Link key={n.href} href={n.href} className={clsx("shrink-0 rounded-md px-2.5 py-1.5 text-xs", isActive(n.href) ? "bg-accent/15 text-ink" : "text-muted")}>
               {n.label}
             </Link>
           ))}

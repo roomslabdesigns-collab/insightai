@@ -3,23 +3,22 @@
 import clsx from "clsx";
 import { AlertTriangle, ChevronDown, Quote, Sparkles, Star, Target } from "lucide-react";
 import { useState } from "react";
-import type { QueryResult } from "@/lib/api";
-import { appName, date } from "@/lib/format";
+import { date } from "@/lib/format";
+import type { AskResult } from "@/lib/types";
 import { Badge, Card, confidenceTone, sentimentTone, severityTone } from "./ui";
 
-export default function Answer({ result }: { result: QueryResult }) {
+export default function Answer({ result }: { result: AskResult }) {
   const { answer, evidence, review, meta } = result;
   const [showAll, setShowAll] = useState(false);
   const cited = evidence.filter((e) => e.cited);
   const shown = showAll ? evidence : cited.length ? cited : evidence.slice(0, 4);
+  const idPattern = new RegExp(`(${evidence.map((e) => e.id).join("|") || "$^"})`, "g");
 
-  // Turn "R00012" mentions in the text into small citation chips
+  // Turn evidence ids mentioned in the text into small citation chips
   const withCitations = (text: string) =>
-    text.split(/(R\d{5})/g).map((part, i) =>
-      /^R\d{5}$/.test(part) ? (
-        <a key={i} href={`#ev-${part}`} className="mx-0.5 rounded bg-accent/15 px-1 font-mono text-[11px] text-accent-2 hover:bg-accent/25">
-          {part}
-        </a>
+    text.split(idPattern).map((part, i) =>
+      evidence.some((e) => e.id === part) ? (
+        <a key={i} href={`#ev-${part}`} className="mx-0.5 rounded bg-accent/15 px-1 font-mono text-[11px] text-accent-2 hover:bg-accent/25">{part}</a>
       ) : (
         part
       ),
@@ -33,7 +32,6 @@ export default function Answer({ result }: { result: QueryResult }) {
           <span className="text-sm font-medium">Insight</span>
           <Badge tone={confidenceTone(answer.confidence)}>{answer.confidence} confidence</Badge>
           <Badge tone={severityTone(answer.severity)}>{answer.severity} severity</Badge>
-          {meta.mode === "extractive" && <Badge tone="warn">LLM offline · extractive</Badge>}
         </div>
         <p className="mt-3 text-[15px] leading-relaxed text-ink/90">{withCitations(answer.insight)}</p>
 
@@ -93,21 +91,18 @@ export default function Answer({ result }: { result: QueryResult }) {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6 text-[11px] text-muted">
                   <span className="font-mono text-accent-2">{e.id}</span>
-                  <span>·</span>
-                  <span>{appName(e.app)}</span>
-                  <span className="flex items-center gap-0.5">· {e.star}<Star className="size-3 fill-current" /></span>
-                  <span>· {date(e.date)}</span>
-                  <span>· {e.customer_id} ({e.segment})</span>
-                  <Badge tone={sentimentTone(e.sentiment)}>{e.sentiment}</Badge>
-                  <Badge>{e.theme}</Badge>
-                  <span className="ml-auto font-mono text-faint">rel {e.score.toFixed(2)}</span>
+                  {e.rating !== undefined && <span className="flex items-center gap-0.5">· {e.rating}<Star className="size-3 fill-current" /></span>}
+                  {e.date && <span>· {date(e.date)}</span>}
+                  {e.customer && <span>· {e.customer}{e.segment ? ` (${e.segment})` : ""}</span>}
+                  {e.sentiment && <Badge tone={sentimentTone(e.sentiment)}>{e.sentiment}</Badge>}
+                  {e.theme && <Badge>{e.theme}</Badge>}
+                  <span className="ml-auto font-mono text-faint">sim {e.score.toFixed(2)}</span>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-3 font-mono text-[10px] text-faint">
-            {meta.latency_ms} ms · hybrid retrieval ({meta.retrieval.dense_hits} dense + {meta.retrieval.keyword_hits} keyword)
-            {meta.retrieval.reranked && " · cross-encoder rerank"}
+            {meta.latency_ms} ms · Pinecone vector search ({meta.relevant} of {meta.retrieved} strongly relevant)
             {meta.llm?.model && ` · ${meta.llm.model}`}
             {meta.llm?.prompt_tokens != null && ` · ${(meta.llm.prompt_tokens || 0) + (meta.llm.completion_tokens || 0)} tokens`}
           </div>
